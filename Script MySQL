@@ -1,0 +1,781 @@
+#!/bin/bash
+
+#Práctica 1-Laura Villarroya
+#Bash Script para MySQL
+
+
+NOMBRE_BD="alumnoMySQL"
+NOMBRE_USUARIO="alumno"
+NOMBRE_PROFESOR="profesor"
+PASSWORD="bd22223"
+
+## --  Descarga datos necesarios del repositorio.
+# Descarga los archivos CSV
+# Oferta y ocupación de plazas-2019,2020,2021
+wget https://zaguan.unizar.es/record/87665/files/CSV.csv -O 87665.csv
+wget https://zaguan.unizar.es/record/96835/files/CSV.csv -O 96835.csv
+wget https://zaguan.unizar.es/record/108270/files/CSV.csv -O 108270.csv
+
+# Resultados de las titulaciones-2019,2020,2021
+wget https://zaguan.unizar.es/record/95644/files/CSV.csv -O 95644.csv
+wget https://zaguan.unizar.es/record/107369/files/CSV.csv -O 107369.csv
+wget https://zaguan.unizar.es/record/118234/files/CSV.csv -O 118234.csv
+
+# Notas de corte definitivas del cupo general a estudios de grados-2019,2020,2021
+wget https://zaguan.unizar.es/record/87663/files/CSV.csv -O 87663.csv
+wget https://zaguan.unizar.es/record/98173/files/CSV.csv -O 98173.csv
+wget https://zaguan.unizar.es/record/109322/files/CSV.csv -O 109322.csv
+
+# Acuerdos de movilidad de estudiantes ERASMUS y SICUE-2019,2020,2021
+wget https://zaguan.unizar.es/record/83980/files/CSV.csv -O 83980.csv
+wget https://zaguan.unizar.es/record/95648/files/CSV.csv -O 95648.csv
+wget https://zaguan.unizar.es/record/107373/files/CSV.csv -O 107373.csv
+
+# Alumnos egresados por titulación-2019,2020,2021
+wget https://zaguan.unizar.es/record/95646/files/CSV.csv -O 95646.csv
+wget https://zaguan.unizar.es/record/107371/files/CSV.csv -O 107371.csv
+wget https://zaguan.unizar.es/record/118236/files/CSV.csv -O 118236.csv
+
+# Rendimiento por asignatura y titulación-2019,2020,2021
+wget https://zaguan.unizar.es/record/95645/files/CSV.csv -O 95645.csv
+wget https://zaguan.unizar.es/record/107370/files/CSV.csv -O 107370.csv
+wget https://zaguan.unizar.es/record/118235/files/CSV.csv -O 118235.csv
+
+echo "Datos descargados del repositorio."
+
+## -- Crear usuario y BD
+# Verifica si el usuario y la BD ya existen, si existen elimina los anteriores
+mysql -u root -p$PASSWORD -e "DROP DATABASE IF EXISTS $NOMBRE_BD;"
+mysql -u root -p$PASSWORD -e "DROP USER IF EXISTS '$NOMBRE_USUARIO'@'localhost';"
+echo "Si existía un usuario y base de datos con el mismo nombre, se han eliminado."
+
+# Crea un usuario
+mysql -u root -p$PASSWORD -e "CREATE USER '$NOMBRE_USUARIO'@'localhost' IDENTIFIED BY '$PASSWORD';"
+
+# Crea una base de datos
+mysql -u root -p$PASSWORD -e "SET GLOBAL local_infile=true;"
+mysql -u root -p$PASSWORD -e "SET GLOBAL log_bin_trust_function_creators=1;"
+mysql -u root -p$PASSWORD -e "CREATE DATABASE $NOMBRE_BD;"
+mysql -u root -p$PASSWORD -e "GRANT ALL PRIVILEGES ON $NOMBRE_BD.* TO '$NOMBRE_USUARIO'@'localhost'; flush privileges;"
+
+echo "La base de datos se ha creado."
+
+
+## -- Crea las tablas para cada archivo CSV, (tablas temporales).
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_oferta_ocupacion (
+   CURSO_ACADEMICO varchar(255),
+   ESTUDIO varchar(255),
+   LOCALIDAD varchar(255),
+   CENTRO varchar(255),
+   TIPO_CENTRO varchar(255),
+   TIPO_ESTUDIO varchar(255),
+   PLAZAS_OFERTADAS varchar(255),
+   PLAZAS_MATRICULADAS varchar(255),
+   PLAZAS_SOLICITADAS varchar(255),
+   INDICE_OCUPACION varchar(255),
+   FECHA_ACTUALIZACION varchar(255)
+);" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_resultados_titulaciones (
+   CURSO_ACADEMICO varchar(255),
+   CENTRO varchar(255),
+   ESTUDIO varchar(255),
+   TIPO_ESTUDIO varchar(255),
+   ALUMNOS_MATRICULADOS varchar(255),
+   ALUMNOS_NUEVO_INGRESO varchar(255),
+   PLAZAS_OFERTADAS varchar(255),
+   ALUMNOS_GRADUADOS varchar(255),
+   ALUMNOS_ADAPTA_GRADO_MATRI varchar(255),
+   ALUMNOS_ADAPTA_GRADO_MATRI_NI varchar(255),
+   ALUMNOS_ADAPTA_GRADO_TITULADO varchar(255),
+   ALUMNOS_CON_RECONOCIMIENTO varchar(255),
+   ALUMNOS_MOVILIDAD_ENTRADA varchar(255),
+   ALUMNOS_MOVILIDAD_SALIDA varchar(255),
+   CREDITOS_MATRICULADOS varchar(255),
+   CREDITOS_RECONOCIDOS varchar(255),
+   DURACION_MEDIA_GRADUADOS varchar(255),
+   TASA_EXITO varchar(255),
+   TASA_RENDIMIENTO varchar(255),
+   TASA_EFICIENCIA varchar(255),
+   TASA_ABANDONO varchar(255),
+   TASA_GRADUACION varchar(255),
+   FECHA_ACTUALIZACION varchar(255)
+);" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_notas_corte (
+   CURSO_ACADEMICO varchar(255),
+   ESTUDIO varchar(255),
+   LOCALIDAD varchar(255),
+   CENTRO varchar(255),
+   PRELA_CONVO_NOTA_DEF varchar(255),
+   NOTA_CORTE_DEFINITIVA_JULIO varchar(255),
+   NOTA_CORTE_DEFINITIVA_SEPTIEMBRE varchar(255),
+   FECHA_ACTUALIZACION varchar(255)
+);" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_acuerdos_movilidad (
+   CURSO_ACADEMICO varchar(255),
+   NOMBRE_PROGRAMA_MOVILIDAD varchar(255),
+   NOMBRE_AREA_ESTUDIOS_MOV varchar(255),
+   CENTRO varchar(255),
+   IN_OUT varchar(255),
+   NOMBRE_IDIOMA_NIVEL_MOVILIDAD varchar(255),
+   PAIS_UNIVERSIDAD_ACUERDO varchar(255),
+   UNIVERSIDAD_ACUERDO varchar(255),
+   PLAZAS_OFERTADAS_ALUMNOS varchar(255),
+   PLAZAS_ASIGNADAS_ALUMNOS_OUT varchar(255),
+   FECHA_ACTUALIZACION varchar(255)
+);" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_alumnos_egresados_titulacion (
+   CURSO_ACADEMICO varchar(255),
+   LOCALIDAD varchar(255),
+   ESTUDIO varchar(255),
+   TIPO_ESTUDIO varchar(255),
+   TIPO_EGRESO varchar(255),
+   SEXO varchar(255),
+   ALUMNOS_GRADUADOS varchar(255),
+   ALUMNOS_INTERRUMPEN_ESTUDIOS varchar(255),
+   ALUMNOS_INTERRUMPEN_EST_ANO1 varchar(255),
+   ALUMNOS_TRASLADAN_OTRA_UNIV varchar(255),
+   DURACION_MEDIA_GRADUADOS varchar(255),
+   TASA_EFICIENCIA varchar(255),
+   FECHA_ACTUALIZACION varchar(255)
+);" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_rendimiento_asignatura_titulacion (
+   CURSO_ACADEMICO varchar(255),
+   TIPO_ESTUDIO varchar(255),
+   ESTUDIO varchar(255),
+   LOCALIDAD varchar(255),
+   CENTRO varchar(255),
+   ASIGNATURA varchar(255),
+   TIPO_ASIGNATURA varchar(255),
+   CLASE_ASIGNATURA varchar(255),
+   TASA_EXITO varchar(255),
+   TASA_RENDIMIENTO varchar(255),
+   TASA_EVALUACION varchar(255),
+   ALUMNOS_EVALUADOS varchar(255),
+   ALUMNOS_SUPERADOS varchar(255),
+   ALUMNOS_PRESENTADOS varchar(255),
+   MEDIA_CONVOCATORIAS_CONSUMIDAS varchar(255),
+   FECHA_ACTUALIZACION varchar(255)
+);" $NOMBRE_BD
+
+#Crea una tabla por cada csv, según su contenido correspondiente a las tablas creadas anteriormente
+# Oferta y ocupación de plazas
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_oferta_ocupacion_2019 LIKE tabla_oferta_ocupacion;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_oferta_ocupacion_2020 LIKE tabla_oferta_ocupacion;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_oferta_ocupacion_2021 LIKE tabla_oferta_ocupacion;" $NOMBRE_BD
+
+# Resultados de las titulaciones
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_resultados_titulaciones_2019 LIKE tabla_resultados_titulaciones;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_resultados_titulaciones_2020 LIKE tabla_resultados_titulaciones;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_resultados_titulaciones_2021 LIKE tabla_resultados_titulaciones;" $NOMBRE_BD
+
+# Notas de corte definitivas del cupo general a estudios de grados
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_notas_corte_2019 LIKE tabla_notas_corte;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_notas_corte_2020 LIKE tabla_notas_corte;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_notas_corte_2021 LIKE tabla_notas_corte;" $NOMBRE_BD
+
+# Acuerdos de movilidad de estudiantes ERASMUS y SICUE
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_acuerdos_movilidad_2019 LIKE tabla_acuerdos_movilidad;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_acuerdos_movilidad_2020 LIKE tabla_acuerdos_movilidad;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_acuerdos_movilidad_2021 LIKE tabla_acuerdos_movilidad;" $NOMBRE_BD
+
+# Alumnos egresados por titulación
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_alumnos_egresados_titulacion_2019 LIKE tabla_alumnos_egresados_titulacion;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_alumnos_egresados_titulacion_2020 LIKE tabla_alumnos_egresados_titulacion;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_alumnos_egresados_titulacion_2021 LIKE tabla_alumnos_egresados_titulacion;" $NOMBRE_BD
+
+# Rendimiento por asignatura y titulación
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_rendimiento_asignatura_titulacion_2019 LIKE tabla_rendimiento_asignatura_titulacion;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_rendimiento_asignatura_titulacion_2020 LIKE tabla_rendimiento_asignatura_titulacion;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE tabla_rendimiento_asignatura_titulacion_2021 LIKE tabla_rendimiento_asignatura_titulacion;" $NOMBRE_BD
+
+
+## -- Carga los datos en la tabla
+# Oferta y ocupación de plazas-2019,2020,2021
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './87665.csv'
+INTO TABLE tabla_oferta_ocupacion_2019
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './96835.csv'
+INTO TABLE tabla_oferta_ocupacion_2020
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './108270.csv'
+INTO TABLE tabla_oferta_ocupacion_2021
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+# Resultados de las titulaciones-2019,2020,2021
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './95644.csv'
+INTO TABLE tabla_resultados_titulaciones_2019
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './107369.csv'
+INTO TABLE tabla_resultados_titulaciones_2020
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './118234.csv'
+INTO TABLE tabla_resultados_titulaciones_2021
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+# Notas de corte definitivas del cupo general a estudios de grados-2019,2020,2021
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './87663.csv'
+INTO TABLE tabla_notas_corte_2019
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './98173.csv'
+INTO TABLE tabla_notas_corte_2020
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './109322.csv'
+INTO TABLE tabla_notas_corte_2021
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+# Acuerdos de movilidad de estudiantes ERASMUS y SICUE-2019,2020,2021
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './83980.csv'
+INTO TABLE tabla_acuerdos_movilidad_2019
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './95648.csv'
+INTO TABLE tabla_acuerdos_movilidad_2020
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './107373.csv'
+INTO TABLE tabla_acuerdos_movilidad_2021
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+# Alumnos egresados por titulación-2019,2020,2021
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './95646.csv'
+INTO TABLE tabla_alumnos_egresados_titulacion_2019
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './107371.csv'
+INTO TABLE tabla_alumnos_egresados_titulacion_2020
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './118236.csv'
+INTO TABLE tabla_alumnos_egresados_titulacion_2021
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+# Rendimiento por asignatura y titulación-2019,2020,2021
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './95645.csv'
+INTO TABLE tabla_rendimiento_asignatura_titulacion_2019
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './107370.csv'
+INTO TABLE tabla_rendimiento_asignatura_titulacion_2020
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES;" $NOMBRE_BD
+
+#mysql --local-infile=1 -u $NOMBRE_USUARIO -p$PASSWORD -e "LOAD DATA LOCAL INFILE './118235.csv'
+#INTO TABLE tabla_rendimiento_asignatura_titulacion_2021
+#FIELDS TERMINATED BY ';'
+#LINES TERMINATED BY '\n'
+#IGNORE 1 LINES;" $NOMBRE_BD
+
+#No se ha cargado el año 2021, porque en el fichero csv hay un error con una fila.
+
+echo "Datos importados en las tablas temporales";
+
+## -- Procesa e importa los datos descargados
+# Crear las tablas según el diseño E/R 
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE centro (
+   id_centro INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+   nombre_centro varchar(255),
+   tipo_centro varchar(255),
+   localidad varchar(255)
+);" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE estudios (
+   id_estudio INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+   nombre_estudio varchar(255),
+   id_centro int,
+   FOREIGN KEY (id_centro) REFERENCES centro(id_centro) 
+);" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE estudio_anyo (
+   id_estudio_anyo INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+   curso_academico int,
+   nota_corte_definitiva_julio double,
+   nota_corte_definitiva_septiembre double,
+   plazas_ofertadas int,
+   plazas_matriculadas int,
+   indice_ocupacion double,
+   id_estudio int, 
+   FOREIGN KEY (id_estudio) REFERENCES estudios(id_estudio)
+);" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE convenio_movilidad (
+   id_convenio_movilidad INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+   nombre_idioma_nivel_movilidad varchar(255),
+   universidad_acuerdo varchar(255),
+   pais_universidad_acuerdo varchar(255),
+   plazas_asignadas_alumnos_out int,
+   in_out varchar(255),
+   nombre_programa_movilidad varchar(255),
+   id_centro int,
+   FOREIGN KEY (id_centro) REFERENCES centro(id_centro)
+);" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE resultado (
+   id_resultado INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+   duracion_media_graduados double,
+   alumnos_graduados int,
+   alumnos_con_reconocimiento int,
+   alumnos_nuevo_ingreso int,
+   creditos_matriculados double,
+   creditos_reconocidos double,
+   alumnos_matriculados int,
+   tasa_rendimiento double,
+   tasa_exito double,
+   id_estudio int,
+   FOREIGN KEY (id_estudio) REFERENCES estudios(id_estudio)
+);" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE asignatura (
+   id_asignatura INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+   nombre_asignatura varchar(255),
+   tipo_asignatura varchar(255),
+   clase_asignatura varchar(255),
+   id_estudio int,
+   FOREIGN KEY (id_estudio) REFERENCES estudios(id_estudio)
+);" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TABLE asignatura_anyo (
+   id_asignatura_anyo INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+   alumnos_evaluados int,
+   alumnos_superados int,
+   alumnos_presentados int,
+   media_convocatorias_consumidas double,
+   id_asignatura int,
+   FOREIGN KEY (id_asignatura) REFERENCES asignatura(id_asignatura)
+);" $NOMBRE_BD
+
+
+echo "Tablas creadas"
+
+## -- Filtra por estudios de grado y en los csv de rendimiento por asignatura y titulación filtra por grados de EINA y EUPT.
+
+# Estudio de grados
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DELETE FROM tabla_oferta_ocupacion_2019 
+   WHERE tipo_estudio != 'Grado';" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DELETE FROM tabla_oferta_ocupacion_2020
+   WHERE tipo_estudio != 'Grado';" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DELETE FROM tabla_oferta_ocupacion_2021
+   WHERE tipo_estudio != 'Grado';" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DELETE FROM tabla_resultados_titulaciones_2019
+   WHERE tipo_estudio != 'Grado';" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DELETE FROM tabla_resultados_titulaciones_2020
+   WHERE tipo_estudio != 'Grado';" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DELETE FROM tabla_resultados_titulaciones_2021
+   WHERE tipo_estudio != 'Grado';" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DELETE FROM tabla_alumnos_egresados_titulacion_2019
+   WHERE tipo_estudio != 'Grado';" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DELETE FROM tabla_alumnos_egresados_titulacion_2020
+   WHERE tipo_estudio != 'Grado';" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DELETE FROM tabla_alumnos_egresados_titulacion_2021
+   WHERE tipo_estudio != 'Grado';" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DELETE FROM tabla_rendimiento_asignatura_titulacion_2019
+   WHERE tipo_estudio != 'Grado';" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DELETE FROM tabla_rendimiento_asignatura_titulacion_2020
+   WHERE tipo_estudio != 'Grado';" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DELETE FROM tabla_rendimiento_asignatura_titulacion_2021
+   WHERE tipo_estudio != 'Grado';" $NOMBRE_BD
+
+# Rendimiento por asignatura y titulación. Deseamos disponer de los datos de los grados de EINA y EUPT.
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DELETE FROM tabla_rendimiento_asignatura_titulacion_2019
+   WHERE centro != 'Escuela de Ingeniería y Arquitectura'
+   and centro != 'Escuela Universitaria Politécnica de Teruel';" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DELETE FROM tabla_rendimiento_asignatura_titulacion_2020
+   WHERE centro != 'Escuela de Ingeniería y Arquitectura'
+   and centro != 'Escuela Universitaria Politécnica de Teruel';" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DELETE FROM tabla_rendimiento_asignatura_titulacion_2021
+   WHERE centro != 'Escuela de Ingeniería y Arquitectura'
+   and centro != 'Escuela Universitaria Politécnica de Teruel';" $NOMBRE_BD
+   
+echo "Filtración realizada"
+
+## --Cargar los datos en las tablas creadas según el diseño E/R.
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "INSERT INTO centro(nombre_centro, tipo_centro, localidad)
+	SELECT DISTINCT nombre_centro, tipo_centro, localidad
+	FROM (
+			SELECT oferta19.centro AS nombre_centro, oferta19.tipo_centro AS tipo_centro, oferta19.localidad AS localidad
+			FROM tabla_oferta_ocupacion_2019 AS oferta19
+			UNION ALL
+			SELECT oferta20.centro AS nombre_centro, oferta20.tipo_centro AS tipo_centro, oferta20.localidad AS localidad
+			FROM tabla_oferta_ocupacion_2020 AS oferta20
+			UNION ALL
+			SELECT oferta21.centro AS nombre_centro, oferta21.tipo_centro AS tipo_centro, oferta21.localidad AS localidad
+			FROM tabla_oferta_ocupacion_2021 AS oferta21
+	) AS sub_centro;" $NOMBRE_BD	
+	
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "INSERT INTO estudios(nombre_estudio, id_centro)
+	SELECT DISTINCT nombre_estudio, id_centro
+	FROM (
+			SELECT ofertaoc19.estudio AS nombre_estudio, 
+				cast(c.id_centro as signed) AS id_centro
+			FROM tabla_oferta_ocupacion_2019 ofertaoc19, centro AS c
+			WHERE c.nombre_centro = ofertaoc19.centro
+			UNION ALL
+			SELECT ofertaoc20.estudio AS nombre_estudio, 
+				cast(c.id_centro as signed) AS id_centro
+			FROM tabla_oferta_ocupacion_2020 ofertaoc20, centro AS c
+			WHERE c.nombre_centro = ofertaoc20.centro
+			UNION ALL
+			SELECT ofertaoc21.estudio AS nombre_estudio, 
+				cast(c.id_centro as signed) AS id_centro
+			FROM tabla_oferta_ocupacion_2021 ofertaoc21, centro AS c
+			WHERE c.nombre_centro = ofertaoc21.centro
+	) AS sub_estudios;" $NOMBRE_BD
+	
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "INSERT INTO estudio_anyo (curso_academico, nota_corte_definitiva_julio,
+   	nota_corte_definitiva_septiembre, plazas_ofertadas, plazas_matriculadas, indice_ocupacion, id_estudio)
+   	SELECT DISTINCT curso_academico, nota_corte_definitiva_julio,
+   		nota_corte_definitiva_septiembre, plazas_ofertadas, plazas_matriculadas, indice_ocupacion, id_estudio 
+   	FROM (
+   			SELECT cast(notasc19.curso_academico as signed) AS curso_academico,
+   			 	cast(notasc19.nota_corte_definitiva_julio as double) AS nota_corte_definitiva_julio,
+   				cast(notasc19.nota_corte_definitiva_septiembre as double) AS nota_corte_definitiva_septiembre, 
+   				cast(oferta19.plazas_ofertadas as signed) AS plazas_ofertadas, 
+   				cast(oferta19.plazas_matriculadas as signed) AS plazas_matriculadas, 
+   				cast(oferta19.indice_ocupacion as double) AS indice_ocupacion,
+   				cast(e.id_estudio as signed) AS id_estudio
+   			FROM tabla_notas_corte_2019 AS notasc19, tabla_oferta_ocupacion_2019 AS oferta19, estudios AS e, centro AS c
+   			WHERE c.nombre_centro = oferta19.centro and e.nombre_estudio = oferta19.estudio
+   				and e.id_centro = c.id_centro and notasc19.centro = oferta19.centro 
+   				and notasc19.estudio = oferta19.estudio
+   				and e.id_estudio = id_estudio	
+   			UNION ALL
+   			SELECT cast(notasc20.curso_academico as signed) AS curso_academico,
+   			 	cast(notasc20.nota_corte_definitiva_julio as double) AS nota_corte_definitiva_julio,
+   				cast(notasc20.nota_corte_definitiva_septiembre as double) AS nota_corte_definitiva_septiembre, 
+   				cast(oferta20.plazas_ofertadas as signed) AS plazas_ofertadas, 
+   				cast(oferta20.plazas_matriculadas as signed) AS plazas_matriculadas, 
+   				cast(oferta20.indice_ocupacion as double) AS indice_ocupacion,
+   				cast(e.id_estudio as signed) AS id_estudio
+   			FROM tabla_notas_corte_2020 AS notasc20, tabla_oferta_ocupacion_2020 AS oferta20, estudios AS e, centro AS c
+   			WHERE c.nombre_centro = oferta20.centro and e.nombre_estudio = oferta20.estudio
+   				and e.id_centro = c.id_centro and notasc20.centro = oferta20.centro 
+   				and notasc20.estudio = oferta20.estudio
+   				and e.id_estudio = id_estudio	
+   			UNION ALL
+   			SELECT cast(notasc21.curso_academico as signed) AS curso_academico,
+   			 	cast(notasc21.nota_corte_definitiva_julio as double) AS nota_corte_definitiva_julio,
+   				cast(notasc21.nota_corte_definitiva_septiembre as double) AS nota_corte_definitiva_septiembre, 
+   				cast(oferta21.plazas_ofertadas as signed) AS plazas_ofertadas, 
+   				cast(oferta21.plazas_matriculadas as signed) AS plazas_matriculadas, 
+   				cast(oferta21.indice_ocupacion as double) AS indice_ocupacion,
+   				cast(e.id_estudio as signed) AS id_estudio
+   			FROM tabla_notas_corte_2021 AS notasc21, tabla_oferta_ocupacion_2021 AS oferta21, estudios AS e, centro AS c
+   			WHERE c.nombre_centro = oferta21.centro and e.nombre_estudio = oferta21.estudio
+   				and e.id_centro = c.id_centro and notasc21.centro = oferta21.centro 
+   				and notasc21.estudio = oferta21.estudio
+   				and e.id_estudio = id_estudio		
+   	) AS sub_estudio_anyo;" $NOMBRE_BD
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "INSERT INTO convenio_movilidad (nombre_idioma_nivel_movilidad, universidad_acuerdo,
+   pais_universidad_acuerdo, plazas_asignadas_alumnos_out, in_out, nombre_programa_movilidad, id_centro)
+   SELECT nombre_idioma_nivel_movilidad, universidad_acuerdo,
+   		pais_universidad_acuerdo, plazas_asignadas_alumnos_out, in_out, nombre_programa_movilidad, id_centro
+   FROM (
+   			SELECT acuerdosm19.nombre_idioma_nivel_movilidad AS nombre_idioma_nivel_movilidad, 
+   				acuerdosm19.universidad_acuerdo AS universidad_acuerdo,
+   				acuerdosm19.pais_universidad_acuerdo AS pais_universidad_acuerdo, 
+   				cast(acuerdosm19.plazas_asignadas_alumnos_out as signed) AS plazas_asignadas_alumnos_out, 
+   				acuerdosm19.in_out AS in_out, 
+   				acuerdosm19.nombre_programa_movilidad AS nombre_programa_movilidad,
+   				c.id_centro AS id_centro
+   			FROM tabla_acuerdos_movilidad_2019 AS acuerdosm19, centro AS c
+   			WHERE acuerdosm19.in_out = 'OUT' and c.nombre_centro = acuerdosm19.centro
+   			UNION ALL
+   			SELECT acuerdosm20.nombre_idioma_nivel_movilidad AS nombre_idioma_nivel_movilidad, 
+   				acuerdosm20.universidad_acuerdo AS universidad_acuerdo,
+   				acuerdosm20.pais_universidad_acuerdo AS pais_universidad_acuerdo, 
+   				cast(acuerdosm20.plazas_asignadas_alumnos_out as signed) AS plazas_asignadas_alumnos_out, 
+   				acuerdosm20.in_out AS in_out, 
+   				acuerdosm20.nombre_programa_movilidad AS nombre_programa_movilidad,
+   				c.id_centro AS id_centro
+   			FROM tabla_acuerdos_movilidad_2020 AS acuerdosm20, centro AS c
+   			WHERE acuerdosm20.in_out = 'OUT' and c.nombre_centro = acuerdosm20.centro
+   			UNION ALL
+   			SELECT acuerdosm21.nombre_idioma_nivel_movilidad AS nombre_idioma_nivel_movilidad, 
+   				acuerdosm21.universidad_acuerdo AS universidad_acuerdo,
+   				acuerdosm21.pais_universidad_acuerdo AS pais_universidad_acuerdo, 
+   				cast(acuerdosm21.plazas_asignadas_alumnos_out as signed) AS plazas_asignadas_alumnos_out, 
+   				acuerdosm21.in_out AS in_out, 
+   				acuerdosm21.nombre_programa_movilidad AS nombre_programa_movilidad,
+   				c.id_centro AS id_centro
+   			FROM tabla_acuerdos_movilidad_2021 AS acuerdosm21, centro AS c
+   			WHERE acuerdosm21.in_out = 'OUT' and c.nombre_centro = acuerdosm21.centro
+   ) AS sub_convenio_movilidad;" $NOMBRE_BD
+   
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "INSERT INTO resultado (duracion_media_graduados, alumnos_graduados,
+   alumnos_con_reconocimiento, alumnos_nuevo_ingreso, creditos_matriculados, creditos_reconocidos,
+   alumnos_matriculados, tasa_rendimiento, tasa_exito, id_estudio)
+   SELECT DISTINCT duracion_media_graduados, alumnos_graduados,
+   		alumnos_con_reconocimiento, alumnos_nuevo_ingreso, creditos_matriculados, creditos_reconocidos,
+   		alumnos_matriculados, tasa_rendimiento, tasa_exito, id_estudio
+   FROM (
+   			SELECT DISTINCT cast(resultados19.duracion_media_graduados as double) AS duracion_media_graduados,
+   				cast(nullif(resultados19.alumnos_graduados, '') as signed) AS alumnos_graduados,
+   				cast(nullif(resultados19.alumnos_con_reconocimiento, '') AS signed) AS alumnos_con_reconocimiento, 
+   				cast(nullif(resultados19.alumnos_nuevo_ingreso, '') as signed) AS alumnos_nuevo_ingreso,
+   				cast(resultados19.creditos_matriculados as double) AS creditos_matriculados, 
+   				cast(resultados19.creditos_reconocidos as double) AS creditos_reconocidos,
+   				cast(nullif(resultados19.alumnos_matriculados, '') as signed) AS alumnos_matriculados,
+   				cast(resultados19.tasa_rendimiento as double) AS tasa_rendimiento, 
+   				cast(resultados19.tasa_exito as double) AS tasa_exito, 
+   				e.id_estudio AS id_estudio
+   			FROM tabla_resultados_titulaciones_2019 AS resultados19, estudios AS e, centro AS c
+   			WHERE (SUBSTR(e.nombre_estudio, 8) = SUBSTR(resultados19.estudio, 3)) and c.id_centro = e.id_centro
+   				and c.nombre_centro = resultados19.centro
+   			UNION ALL
+   			SELECT DISTINCT cast(resultados20.duracion_media_graduados as double) AS duracion_media_graduados, 
+   				cast(nullif(resultados20.alumnos_graduados, '') as signed) AS alumnos_graduados,
+   				cast(nullif(resultados20.alumnos_con_reconocimiento, '') as signed) AS alumnos_con_reconocimiento, 
+   				cast(nullif(resultados20.alumnos_nuevo_ingreso, '') as signed) AS alumnos_nuevo_ingreso, 
+   				cast(resultados20.creditos_matriculados as double) AS creditos_matriculados, 
+   				cast(resultados20.creditos_reconocidos as double) AS creditos_reconocidos,
+   				cast(nullif(resultados20.alumnos_matriculados, '') as signed) AS alumnos_matriculados, 
+   				cast(resultados20.tasa_rendimiento as double) AS tasa_rendimiento, 
+   				cast(resultados20.tasa_exito as double) AS tasa_exito, 
+   				e.id_estudio AS id_estudio
+   			FROM tabla_resultados_titulaciones_2020 AS resultados20, estudios AS e, centro AS c
+   			WHERE (SUBSTR(e.nombre_estudio, 8) = SUBSTR(resultados20.estudio, 3)) and c.id_centro = e.id_centro
+   				and c.nombre_centro = resultados20.centro
+   			UNION ALL
+   			SELECT DISTINCT cast(resultados21.duracion_media_graduados as double) AS duracion_media_graduados, 
+   				cast(nullif(resultados21.alumnos_graduados, '') as signed) AS alumnos_graduados,
+   				cast(nullif(resultados21.alumnos_con_reconocimiento, '') as signed) AS alumnos_con_reconocimiento, 
+   				cast(nullif(resultados21.alumnos_nuevo_ingreso, '') as signed) AS alumnos_nuevo_ingreso, 
+   				cast(resultados21.creditos_matriculados as double) AS creditos_matriculados, 
+   				cast(resultados21.creditos_reconocidos as double) AS creditos_reconocidos,
+   				cast(nullif(resultados21.alumnos_matriculados, '') as signed) AS alumnos_matriculados, 
+   				cast(resultados21.tasa_rendimiento as double) AS tasa_rendimiento, 
+   				cast(resultados21.tasa_exito as double) AS tasa_exito, 
+   				e.id_estudio AS id_estudio
+   			FROM tabla_resultados_titulaciones_2021 AS resultados21, estudios AS e, centro AS c
+   			WHERE (SUBSTR(e.nombre_estudio, 8) = SUBSTR(resultados21.estudio, 3)) and c.id_centro = e.id_centro
+   				and c.nombre_centro = resultados21.centro   			   				
+   ) AS sub_resultados;" $NOMBRE_BD
+   
+#En las tablas asignatura y asignatura_anyo no se ha cargado el año 2021, porque en el fichero csv hay un error con una fila.
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "INSERT INTO asignatura (nombre_asignatura,
+   	tipo_asignatura, clase_asignatura, id_estudio)
+   	SELECT DISTINCT nombre_asignatura, tipo_asignatura, clase_asignatura, id_estudio
+   	FROM (
+   			SELECT DISTINCT rend19.asignatura AS nombre_asignatura,
+   				rend19.tipo_asignatura AS tipo_asignatura, 
+   				rend19.clase_asignatura AS clase_asignatura,
+   				cast(e.id_estudio as signed) AS id_estudio
+   			FROM tabla_rendimiento_asignatura_titulacion_2019 AS rend19, estudios AS e
+   			WHERE e.nombre_estudio = rend19.estudio 
+   			UNION ALL
+   			SELECT DISTINCT rend20.asignatura AS nombre_asignatura,
+   				rend20.tipo_asignatura AS tipo_asignatura, 
+   				rend20.clase_asignatura AS clase_asignatura,
+   				cast(e.id_estudio as signed) AS id_estudio
+   			FROM tabla_rendimiento_asignatura_titulacion_2020 AS rend20, estudios AS e
+   			WHERE e.nombre_estudio = rend20.estudio 	
+   	) AS sub_asignatura;" $NOMBRE_BD  
+   
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "INSERT INTO asignatura_anyo (alumnos_evaluados, alumnos_superados,
+   alumnos_presentados, media_convocatorias_consumidas, id_asignatura)
+   SELECT DISTINCT alumnos_evaluados, alumnos_superados, alumnos_presentados, media_convocatorias_consumidas, id_asignatura
+   FROM ( 
+   			SELECT DISTINCT cast(rend19.alumnos_evaluados as signed) AS alumnos_evaluados, 
+   				cast(rend19.alumnos_superados as signed) AS alumnos_superados, 
+   				cast(rend19.alumnos_presentados as signed) AS alumnos_presentados,
+   				cast(rend19.media_convocatorias_consumidas as double) AS media_convocatorias_consumidas,
+   				cast(a.id_asignatura as signed) AS id_asignatura  		
+   			FROM tabla_rendimiento_asignatura_titulacion_2019 AS rend19, asignatura AS a, estudios AS e
+   			WHERE a.nombre_asignatura = rend19.asignatura and a.id_estudio = e.id_estudio
+   			UNION ALL
+   			SELECT DISTINCT cast(rend20.alumnos_evaluados as signed) AS alumnos_evaluados, 
+   				cast(rend20.alumnos_superados as signed) AS alumnos_superados, 
+   				cast(rend20.alumnos_presentados as signed) AS alumnos_presentados,
+   				cast(rend20.media_convocatorias_consumidas as double) AS media_convocatorias_consumidas,
+   				cast(a.id_asignatura as signed) AS id_asignatura  		
+   			FROM tabla_rendimiento_asignatura_titulacion_2020 AS rend20, asignatura AS a, estudios AS e
+   			WHERE a.nombre_asignatura = rend20.asignatura and a.id_estudio = e.id_estudio
+   ) AS sub_asignatura_anyo;" $NOMBRE_BD
+
+
+## -- Eliminar las tablas temporales que se han creado anteriormente.
+# Oferta y ocupación de plazas
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_oferta_ocupacion_2019;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_oferta_ocupacion_2020;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_oferta_ocupacion_2021;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_oferta_ocupacion;" $NOMBRE_BD
+
+# Resultados de las titulaciones
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_resultados_titulaciones_2019;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_resultados_titulaciones_2020;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_resultados_titulaciones_2021;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_resultados_titulaciones;" $NOMBRE_BD
+
+# Notas de corte definitivas del cupo general a estudios de grados
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_notas_corte_2019;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_notas_corte_2020;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_notas_corte_2021;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_notas_corte;" $NOMBRE_BD
+
+# Acuerdos de movilidad de estudiantes ERASMUS y SICUE
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_acuerdos_movilidad_2019;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_acuerdos_movilidad_2020;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_acuerdos_movilidad_2021;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_acuerdos_movilidad;" $NOMBRE_BD
+
+# Alumnos egresados por titulación
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_alumnos_egresados_titulacion_2019;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_alumnos_egresados_titulacion_2020;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_alumnos_egresados_titulacion_2021;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_alumnos_egresados_titulacion;" $NOMBRE_BD
+
+# Rendimiento por asignatura y titulación
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_rendimiento_asignatura_titulacion_2019;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_rendimiento_asignatura_titulacion_2020;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_rendimiento_asignatura_titulacion_2021;" $NOMBRE_BD
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "DROP TABLE tabla_rendimiento_asignatura_titulacion;" $NOMBRE_BD
+
+
+## -- Implementa en nuestra BD un TRIGGER que impida borrar datos en una de nuestras tablas.
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE TRIGGER impedir_borrar
+   BEFORE DELETE ON centro
+   FOR EACH ROW
+      SIGNAL SQLSTATE '45000' 
+      SET MESSAGE_TEXT='No se permite borrar datos de la tabla.';
+      
+      
+    DELETE FROM centro WHERE id_centro = 1;" $NOMBRE_BD
+
+
+## -- Lanza consulta SQL que devuelva los dos estudios de cada localidad con mayor índice de ocupación en el 2020.
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "SELECT nombre_estudio, localidad
+   FROM (
+      SELECT e.nombre_estudio, c.localidad, ea.indice_ocupacion, ROW_NUMBER() OVER (PARTITION BY c.localidad ORDER BY ea.indice_ocupacion DESC) AS
+      		 mayor_ocupacion
+      FROM estudios e, centro c, estudio_anyo ea
+      WHERE e.id_estudio = ea.id_estudio and e.id_centro = c.id_centro 
+            and ea.curso_academico = 2020
+   ) mayor_indice
+   WHERE mayor_indice.mayor_ocupacion <= 2;" $NOMBRE_BD
+   
+   
+   
+## -- Lanza consulta SQL que devuelva la universidad que más alumnos recibe de cada centro en el 2020.
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "SELECT DISTINCT cm.universidad_acuerdo, c.nombre_centro, c.localidad, SUM(cm.plazas_asignadas_alumnos_out)
+   FROM estudios e, centro c, convenio_movilidad cm, estudio_anyo ea
+   WHERE c.id_centro = e.id_centro and c.id_centro = cm.id_centro and e.id_estudio = ea.id_estudio
+         and ea.curso_academico = 2020 and cm.in_out LIKE 'OUT'  
+   GROUP BY cm.universidad_acuerdo, c.nombre_centro, cm.plazas_asignadas_alumnos_out, c.localidad, c.id_centro, ea.curso_academico
+   HAVING SUM(cm.plazas_asignadas_alumnos_out) = (SELECT DISTINCT MAX(mayor_alumnos.total_plazas_asignadas_alumnos_out) 
+         										  FROM (
+         												SELECT DISTINCT SUM(cmm.plazas_asignadas_alumnos_out) as total_plazas_asignadas_alumnos_out
+         												FROM convenio_movilidad cmm
+         												WHERE c.id_centro = cmm.id_centro 
+         													  and ea.curso_academico = 2020 and cmm.in_out LIKE 'OUT'
+         												GROUP BY cmm.universidad_acuerdo
+         										   ) as mayor_alumnos
+         	 								  )
+   " $NOMBRE_BD
+   
+#Si un centro tiene varias universidades con mayor número de pazas_asignadas_alumnos_out mostrará todas esas universidades.
+
+
+
+## -- Crear una vista que incluya de cada año tratado, las 10 asignaturas con mayor y menor tasa de éxito en el Grado
+## en Ingeniería Informática tanto de EINA como de EUPT.
+#EINA = Escuela de Ingeniería y Arquitectura
+#EUPT = Escuela Universitaria Politécnica de Teruel
+
+mysql -u $NOMBRE_USUARIO -p$PASSWORD -e "CREATE VIEW vista_tasas_exitos AS
+	SELECT sub_vista_tasa_exitos.nombre_asignatura, sub_vista_tasa_exitos.nombre_centro, 
+		sub_vista_tasa_exitos.nombre_estudio, sub_vista_tasa_exitos.tasa_exito_mayor, sub_vista_tasa_exitos.tasa_exito_menor,
+		sub_vista_tasa_exitos.curso_academico
+	FROM(
+		SELECT a.nombre_asignatura, r.tasa_exito, c.nombre_centro, e.nombre_estudio, ee.curso_academico,
+			ROW_NUMBER() OVER(PARTITION BY c.nombre_centro, ee.curso_academico ORDER BY r.tasa_exito DESC) AS tasa_exito_mayor,
+           	ROW_NUMBER() OVER(PARTITION BY c.nombre_centro, ee.curso_academico ORDER BY r.tasa_exito ASC) AS tasa_exito_menor
+		FROM centro c, asignatura a, resultado r, estudios e, estudio_anyo ee
+		WHERE c.id_centro = e.id_centro and e.id_estudio = r.id_estudio and e.id_estudio = a.id_estudio
+			and e.id_estudio = ee.id_estudio
+      		and e.nombre_estudio LIKE 'Grado: Ingeniería Informática' 
+      		and (c.nombre_centro LIKE 'Escuela de Ingeniería y Arquitectura'
+      		or  c.nombre_centro LIKE 'Escuela Universitaria Politécnica de Teruel')
+	)AS sub_vista_tasa_exitos
+	WHERE sub_vista_tasa_exitos.tasa_exito_mayor <= 10 OR sub_vista_tasa_exitos.tasa_exito_menor <= 10
+	GROUP BY sub_vista_tasa_exitos.nombre_centro, sub_vista_tasa_exitos.nombre_asignatura, sub_vista_tasa_exitos.tasa_exito,
+			sub_vista_tasa_exitos.nombre_estudio, sub_vista_tasa_exitos.tasa_exito_mayor, sub_vista_tasa_exitos.tasa_exito_menor,
+			sub_vista_tasa_exitos.curso_academico
+	HAVING sub_vista_tasa_exitos.curso_academico
+	ORDER BY sub_vista_tasa_exitos.nombre_centro, sub_vista_tasa_exitos.tasa_exito DESC, sub_vista_tasa_exitos.curso_academico;
+	
+	
+	
+	SELECT * 
+	FROM vista_tasas_exitos;" $NOMBRE_BD
+
+
+## --Crear usuario “profesor” con permisos de lectura y facilitar la contraseña en la documentación, comprobando
+## su correcto funcionamiento previamente.
+
+# Verifica si el usuario y la BD ya existen, si existen elimina los anteriores
+mysql -u root -p$PASSWORD -e "DROP USER IF EXISTS '$NOMBRE_PROFESOR'@'localhost';"
+
+# Crear usuario "profesor" con permisos de lectura
+mysql -u root -p$PASSWORD -e "CREATE USER '$NOMBRE_PROFESOR'@'localhost' IDENTIFIED BY '$PASSWORD';"
+mysql -u root -p$PASSWORD -e "GRANT USAGE ON *.* TO '$NOMBRE_PROFESOR'@'localhost';"
+mysql -u root -p$PASSWORD -e "GRANT SELECT ON *.* TO '$NOMBRE_PROFESOR'@'localhost';"
+
+echo "Se ha creado el usuario $NOMBRE_PROFESOR con permisos de lectura."
+
